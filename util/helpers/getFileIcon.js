@@ -3,7 +3,7 @@ const { KNOWN_EXTENSIONS } = require('../data/languages.json')
 
 
 const getFileIcon = (name) => {
-    return "https://raw.githubusercontent.com/Shineurysm/discord-coding-presence/main/icons/small_image/".concat(name, ".png")
+    return "https://raw.githubusercontent.com/Shineurysm/ShPresence/main/util/icons/".concat(name, ".png")
 };
 
 
