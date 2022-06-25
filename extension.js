@@ -1,41 +1,45 @@
 // @ts-nocheck
-const vscode = require('vscode');
 const presence = require('discord-rich-presence')('989074672161267762');
-const path = require('path');
+const { basename, extname } = require('path');
 const { getIcon } = require('./util/helpers/getFileIcon');
-const wait = require('node:timers/promises').setTimeout;
-const statBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+const { window, commands, StatusBarAlignment } = require('vscode');
+const { stat } = require('fs');
 
-async function activate(context) {
-	statBar.text = 'Connect to Discord Presence'
-	statBar.tooltip = 'Connect to Discord Rich Presence'
-	statBar.command = 'test-extension.connect'
-	statBar.show()
-	let interval;
+const statBar = window.createStatusBarItem(StatusBarAlignment.Left);
 
-	let runPresence = vscode.commands.registerCommand('test-extension.connect', async function () {
-		statBar.text = 'Connecting to presence....'
-		statBar.tooltip = 'Please wait while I set some things up....'
+// SHOW THE CONNECT BUTTON
+statBar.text = 'Connect to Discord Presence'
+statBar.tooltip = 'This will connect you into Discord Presence Gateway'
+statBar.show()
 
-		const startTimestamp = new Date()
+// REGISTERING ALL OF THE EXTENSION's COMMAND
+async function registerCommands(ctx) {
 
-		// UPDATE FILE
-		interval = setInterval(async function () {
+	// CONNECT COMMAND
+	const connect = commands.registerCommand('shpresence.connect', () => {
+
+		// connecting text
+		statBar.text = 'Connecting to Discord Presence.....'
+		statBar.tooltip = 'Currently connecting you into Discord Presence'
+		statBar.show()
+
+		// extension's brain
+		setInterval(() => {
 			const fileName = path.basename(vscode.window.activeTextEditor.document.fileName)
 			const fileExt = path.extname(fileName).replace('.', '').toUpperCase()
 
-			const key = await getIcon(fileName)
+			const langIcon = await getIcon(fileName)
 
 			const currentLine = (vscode.window.activeTextEditor.selection.active.line + 1).toLocaleString()
 			const currentCol = (vscode.window.activeTextEditor.selection.active.character + 1).toLocaleString()
 
 
-			function presencee() {
+			function presence() {
 				const presenceOptions = {
-					details: `💻 ${fileName}`,
+					details: `Editing ${fileName}`,
 					state: `Ln ${currentLine}, Col ${currentCol}`,
 					startTimestamp,
-					largeImageKey: key,
+					largeImageKey: langIcon,
 					largeImageText: `Editing ${fileExt} file`,
 					smallImageKey: 'bot_pic',
 					smallImageText: `Shinomy`,
@@ -44,33 +48,38 @@ async function activate(context) {
 					],
 					instance: true,
 				}
-
 				presence.updatePresence(presenceOptions)
-
 			}
 
-			await presencee()
+			presence()
 
-			console.log('runnin')
-		}, 2000)
+		}, 2500)
 
-		statBar.text = 'Successfully Connected to Discord Presence'
-		statBar.tooltip = 'You\'re Connected to Discord Rich Presence || Click Again If You Want to Disconnect Out of Discord Presence'
-		statBar.command = 'test-extension.disconnect'
-		statBar.show()
-	});
+		presence.on('ready', () => {
+			statBar.text = 'Connected to Discord Presence'
+			statBar.tooltip = 'Successfully connected to Discord Presence Gateway\n`Click again if you wish to disconnect out of Discord Presence`'
+			statBar.commad = 'shpresence.disconnect'
+			statBar.show()
+		})
+	})
 
-	const disconnectPresence = vscode.commands.registerCommand('test-extension.disconnect', async function () {
-		await clearInterval(interval)
-		await presence.disconnect()
-		statBar.text = 'Disconnected Discord Presence'
-		statBar.tooltip = 'You\'re Disconnected out of Discord Rich Presence || Click Again to Connect to Discord Rich Presence'
-		statBar.command = 'test-extension.connect'
+	// DISCONNECT COMMAND
+	const disconnect = commands.registerCommand('shpresence.disconnect', () => {
+		statBar.text = 'Reconnect to Discord Presence'
+		statBar.tooltip = 'You are currently disconencted out of Discord Presence\n`Click again if you wish to conenct to Discord Presence`'
+		statBar.commad = 'shpresence.connect'
 		statBar.show()
 	})
 
-	context.subscriptions.push(runPresence, disconnectPresence);
+
+	ctx.subscription.push(connect, disconnect)
 }
+
+
+function activate(ctx) {
+	registerCommands(ctx)
+}
+
 
 function deactivate() { }
 
