@@ -35,8 +35,6 @@ const getIcon = (doc) => {
     return getFileIcon(resolveFileIcon(doc))
 }
 
-console.log(getIcon)
-
 module.exports = {
     getIcon: getIcon
 }
