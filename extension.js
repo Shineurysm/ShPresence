@@ -1,74 +1,84 @@
 // @ts-nocheck
-const presence = require('discord-rich-presence')('989074672161267762');
 const { basename, extname } = require('path');
 const { getIcon } = require('./util/helpers/getFileIcon');
 const { window, commands, StatusBarAlignment } = require('vscode');
+const vscode = require('vscode')
 const { stat } = require('fs');
+const clientId = '989074672161267762'
+const RPC = require('discord-rpc')
+let rpc;
+let activityInterval;
 
 const statBar = window.createStatusBarItem(StatusBarAlignment.Left);
+const startTimestamp = new Date()
 
-// SHOW THE CONNECT BUTTON
-statBar.text = 'Connect to Discord Presence'
-statBar.tooltip = 'This will connect you into Discord Presence Gateway'
-statBar.show()
+async function setAct() {
+	const fileName = basename(window.activeTextEditor.document.fileName)
+	const fileExt = extname(fileName).replace('.', '').toUpperCase()
+
+	const langIcon = await getIcon(fileName)
+
+	const currentLine = (window.activeTextEditor.selection.active.line + 1).toLocaleString()
+	const currentCol = (window.activeTextEditor.selection.active.character + 1).toLocaleString()
+
+	const presenceInfo = {
+		details: `Editing ${fileName}`,
+		state: `Ln ${currentLine}, Col ${currentCol}`,
+		startTimestamp,
+		largeImageKey: langIcon,
+		largeImageText: `Editing ${fileExt} file`,
+		smallImageKey: 'bot_pic',
+		smallImageText: `Shinomy`,
+		buttons: [
+			{ label: 'Invite Shinomy', url: 'https://discord.com/api/oauth2/authorize?client_id=973561420488777790&permissions=8&scope=bot%20applications.commands' }
+		],
+		instance: true
+	}
+
+	rpc.setActivity(presenceInfo)
+}
+
+async function login() {
+	statBar.text = 'Connecting to Discord Gateway...'
+	statBar.tooltip = 'Connecting to Discord Gateway...'
+
+	rpc = new RPC.Client({
+		transport: 'ipc'
+	})
+
+	rpc.on('ready', async () => {
+		statBar.text = 'Connected to Discord Gateway'
+		statBar.tooltip = 'Connected to Discord Gateway\nClick to Disconnect'
+		statBar.command = 'shpresence.disconnect'
+		statBar.show()
+
+		activityInterval = setInterval(async () => {
+			await setAct()
+		}, 3000)
+	})
+
+	await rpc.login({ clientId })
+
+
+}
 
 // REGISTERING ALL OF THE EXTENSION's COMMAND
 async function registerCommands(ctx) {
 
 	// CONNECT COMMAND
-	const connect = commands.registerCommand('shpresence.connect', () => {
-
-		// connecting text
-		statBar.text = 'Connecting to Discord Presence.....'
-		statBar.tooltip = 'Currently connecting you into Discord Presence'
-		statBar.show()
-
-		// extension's brain
-		setInterval(() => {
-			const fileName = path.basename(vscode.window.activeTextEditor.document.fileName)
-			const fileExt = path.extname(fileName).replace('.', '').toUpperCase()
-
-			const langIcon = await getIcon(fileName)
-
-			const currentLine = (vscode.window.activeTextEditor.selection.active.line + 1).toLocaleString()
-			const currentCol = (vscode.window.activeTextEditor.selection.active.character + 1).toLocaleString()
-
-
-			function presence() {
-				const presenceOptions = {
-					details: `Editing ${fileName}`,
-					state: `Ln ${currentLine}, Col ${currentCol}`,
-					startTimestamp,
-					largeImageKey: langIcon,
-					largeImageText: `Editing ${fileExt} file`,
-					smallImageKey: 'bot_pic',
-					smallImageText: `Shinomy`,
-					buttons: [
-						{ label: 'Invite Shinomy', url: 'https://discord.com/api/oauth2/authorize?client_id=973561420488777790&permissions=8&scope=bot%20applications.commands' }
-					],
-					instance: true,
-				}
-				presence.updatePresence(presenceOptions)
-			}
-
-			presence()
-
-		}, 2500)
-
-		presence.on('ready', () => {
-			statBar.text = 'Connected to Discord Presence'
-			statBar.tooltip = 'Successfully connected to Discord Presence Gateway\n`Click again if you wish to disconnect out of Discord Presence`'
-			statBar.commad = 'shpresence.disconnect'
-			statBar.show()
-		})
+	const connect = commands.registerCommand('shpresence.connect', function () {
+		login()
 	})
 
 	// DISCONNECT COMMAND
-	const disconnect = commands.registerCommand('shpresence.disconnect', () => {
-		statBar.text = 'Reconnect to Discord Presence'
-		statBar.tooltip = 'You are currently disconencted out of Discord Presence\n`Click again if you wish to conenct to Discord Presence`'
-		statBar.commad = 'shpresence.connect'
+	const disconnect = commands.registerCommand('shpresence.disconnect', function () {
+		statBar.text = 'Disconnected to Discord Gateway'
+		statBar.tooltip = 'Disconnected to Discord Gateway\nClick to Connect'
+		statBar.command = 'shpresence.connect'
 		statBar.show()
+
+		rpc.destroy()
+		clearInterval(activityInterval)
 	})
 
 
@@ -76,10 +86,11 @@ async function registerCommands(ctx) {
 }
 
 
-function activate(ctx) {
+async function activate(ctx) {
 	registerCommands(ctx)
-}
 
+	await login()
+}
 
 function deactivate() { }
 
