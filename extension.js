@@ -8,9 +8,9 @@ const clientId = '989074672161267762'
 const RPC = require('discord-rpc')
 let rpc;
 let activityInterval;
+let startTimestamp;
 
 const statBar = window.createStatusBarItem(StatusBarAlignment.Left);
-const startTimestamp = new Date()
 
 async function setAct() {
 	const fileName = basename(window.activeTextEditor.document.fileName)
@@ -67,6 +67,7 @@ async function registerCommands(ctx) {
 
 	// CONNECT COMMAND
 	const connect = commands.registerCommand('shpresence.connect', function () {
+		startTimestamp = new Date()
 		login()
 	})
 
@@ -89,6 +90,7 @@ async function registerCommands(ctx) {
 async function activate(ctx) {
 	registerCommands(ctx)
 
+	startTimestamp = new Date()
 	await login()
 }
 
